@@ -52,7 +52,7 @@ AGSUBNET=vehicleSubnet
 az network vnet subnet create --resource-group $RG --vnet-name $VNET --name $AGSUBNET --address-prefixes 10.0.2.0/24
  az network vnet subnet create --resource-group $RG --vnet-name $VNET --name $AGSUBNET --address-prefixes 10.0.2.0/24
 # Gateway Public IP
-az network public-ip create --resource-group $RG --name appgwPublicIp --sku Standard --dns-name andrevstdev${RANDOM}
+az network public-ip create --resource-group $RG --name appGatewayPublicIp --sku Standard --dns-name andrevstdev${RANDOM}
 ```
 
 Now on Google, I setup my DNS to point to this IP, a A record for @ and WWW
@@ -105,3 +105,16 @@ az network application-gateway rule create --resource-group $RG --gateway-name $
 # Remove default rule created initially on appgw creation
 az network application-gateway rule delete --resource-group $RG --gateway-name $GATEWAY --name rule1
 ```
+
+9. Test it
+
+```shell
+# get url
+echo http://$(az network public-ip show --resource-group $RG --name appGatewayPublicIp --query dnsSettings.fqdn --output tsv)
+# since I setup the IP and a www CNAME on my DNS, I can check it with
+host andrevst.dev
+```
+
+Finnally I've tested it at [hide my ass free proxy](https://www.hidemyass-freeproxy.com/)
+
+10. **DON'T FORGET TO DELETE THE RESOURCES
