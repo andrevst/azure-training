@@ -28,4 +28,17 @@ git clone https://github.com/MicrosoftDocs/mslearn-load-balance-web-traffic-with
 az vm create --resource-group $RG --name webServer1 --image UbuntuLTS --admin-username azureuser --generate-ssh-keys --vnet-name $VNET --subnet $WSSUBNET --public-ip-address "" --nsg "" --custom-data module-files/scripts/vmconfig.sh --no-wait
 #Create VM 2
 az vm create --resource-group $RG --name webServer2 --image UbuntuLTS --admin-username azureuser --generate-ssh-keys --vnet-name $VNET --subnet $WSSUBNET --public-ip-address "" --nsg "" --custom-data module-files/scripts/vmconfig.sh
+# Validate
+az vm list --resource-group $RG --show-details --output table
 ```
+
+4. Create Web App (PaaS)
+
+```shell
+# Create App Plan
+ASPLAN=testPlanAndrevstdev
+az appservice plan create --resource-group $RG --name ASPLAN --sku S1
+# Create App Service
+APPSERVICE="licenserenewal$RANDOM"
+az webapp create --resource-group $RG --name $APPSERVICE --plan $ASPLAN --deployment-source-url https://github.com/MicrosoftDocs/mslearn-load-balance-web-traffic-with-application-gateway --deployment-source-branch appService --runtime "DOTNETCORE|2.1"
+
