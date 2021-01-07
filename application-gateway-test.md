@@ -60,7 +60,8 @@ Now on Google, I setup my DNS to point to this IP, a A record for @ and WWW
 5.2 Create the Application Gateway with WAF
 
 ```shell
-az network application-gateway create --resource-group $RG --name andrevstdevAppGateway --sku WAF_v2 --capacity 2 --vnet-name $VNET --subnet $AGSUBNET --public-ip-address appGatewayPublicIp --http-settings-protocol Http --http-settings-port 8080 --private-ip-address 10.0.2.4 --frontend-port 8080
+GATEWAY=andrevstdevAppGateway
+az network application-gateway create --resource-group $RG --name $GATEWAY-sku WAF_v2 --capacity 2 --vnet-name $VNET --subnet $AGSUBNET --public-ip-address appGatewayPublicIp --http-settings-protocol Http --http-settings-port 8080 --private-ip-address 10.0.2.4 --frontend-port 8080
 ```
 
 6. Add servers to backend pools
@@ -71,20 +72,36 @@ az vm list-ip-addresses --resource-group $RG --name webserver1 --query [0].virtu
 # get vm2 ip
 az vm list-ip-addresses --resource-group $RG --name webserver1 --query [0].virtualMachine.network.privateIpAddresses[0] --output tsv
 # Create VM Pool
-az network application-gateway address-pool create --gateway-name andrevstdevAppGateway --resource-group $RG --name vmPool --servers 10.0.1.4 10.0.1.5
+az network application-gateway address-pool create --gateway-name $GATEWAY --resource-group $RG --name vmPool --servers 10.0.1.4 10.0.1.5
 #Create Webapp Pool
-az network application-gateway address-pool create --gateway-name andrevstdevAppGateway --resource-group $RG --name appServicePool --servers $APPSERVICE.azurewebsites.net
+az network application-gateway address-pool create --gateway-name $GATEWAY --resource-group $RG --name appServicePool --servers $APPSERVICE.azurewebsites.net
 ```
 7. Create ports, Listeners and Probes
 
 ```shell
 #create port 80
-az network application-gateway frontend-port create --resource-group $RG --gateway-name andrevstdevAppGateway --name port80 --port 80
+az network application-gateway frontend-port create --resource-group $RG --gateway-name $GATEWAY --name port80 --port 80
 # Listener to handle requests on port 80
-az network application-gateway http-listener create --resource-group $RG --name andrevstdevListener --frontend-port port80 --frontend-ip appGatewayFrontendIP --gateway-name andrevstdevAppGateway
+az network application-gateway http-listener create --resource-group $RG --name andrevstdevListener --frontend-port port80 --frontend-ip appGatewayFrontendIP --gateway-name $GATEWAY
 ```
 > Create a Health Probe to monitor avaliability
 
 ```shell
-az network application-gateway probe create --resource-group $RG --gateway-name andrevstdevAppGateway --name customProbe --path / --interval 15 --threshold 3 --timeout 10 --protocol Http --host-name-from-http-settings true
+# Create a Probe
+az network application-gateway probe create --resource-group $RG --gateway-name $GATEWAY --name customProbe --path / --interval 15 --threshold 3 --timeout 10 --protocol Http --host-name-from-http-settings true
+# Use the Probe
+az network application-gateway http-settings create --resource-group $RG  --gateway-name $GATEWAY --name appGatewayBackendHttpSettings --host-name-from-backend-pool true --port 80 --probe customProbe
+```
+
+8. Path Based Routing
+
+```shell
+# create path map for the vmPool
+az network application-gateway url-path-map create --resource-group $RG --gateway-name $GATEWAY --name urlPathMap --paths /VehicleRegistration/* --http-settings appGatewayBackendHttpSettings --address-pool vmPool
+#  create path map rule for webapp
+az network application-gateway url-path-map rule create --resource-group $RG --gateway-name $GATEWAY --name appServiceUrlPathMap  --paths /LicenseRenewal/* --http-settings appGatewayBackendHttpSettings --address-pool appServicePool --path-map-name urlPathMap
+# create a new routing rule using the path map
+az network application-gateway rule create --resource-group $RG --gateway-name $GATEWAY --name appServiceRule --http-listener andrevstdevListener --rule-type PathBasedRouting --address-pool appServicePool --url-path-map urlPathMap
+# Remove default rule created initially on appgw creation
+az network application-gateway rule delete --resource-group $RG --gateway-name $GATEWAY --name rule1
 ```
