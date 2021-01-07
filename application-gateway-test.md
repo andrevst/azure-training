@@ -117,4 +117,4 @@ host andrevst.dev
 
 Finnally I've tested it at [hide my ass free proxy](https://www.hidemyass-freeproxy.com/)
 
-10. **DON'T FORGET TO DELETE THE RESOURCES
+10. **DON'T FORGET TO DELETE THE RESOURCES**
